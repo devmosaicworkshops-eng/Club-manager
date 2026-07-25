@@ -1,0 +1,25 @@
+# ─────────────────────────────────────────────────────────────────────────────
+# Netlify configuration for Club Manager frontend
+# ─────────────────────────────────────────────────────────────────────────────
+
+[build]
+  # Run from the repo root
+  base    = "/"
+  command = "npx --yes pnpm@10 install --frozen-lockfile && npx pnpm@10 run typecheck:libs && BASE_PATH=/ npx pnpm@10 --filter @workspace/club-manager run build"
+  publish = "artifacts/club-manager/dist/public"
+
+# ── Proxy /api/* → Render backend ───────────────────────────────────────────
+# Replace the placeholder below with your actual Render service URL
+# (e.g. https://club-manager-api.onrender.com)
+# This keeps setBaseUrl('') working — the browser never sees cross-origin.
+[[redirects]]
+  from   = "/api/*"
+  to     = "https://YOUR_RENDER_URL.onrender.com/api/:splat"
+  status = 200
+  force  = true
+
+# ── SPA fallback — send all unmatched routes to index.html ──────────────────
+[[redirects]]
+  from   = "/*"
+  to     = "/index.html"
+  status = 200

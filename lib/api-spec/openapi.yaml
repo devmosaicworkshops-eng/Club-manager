@@ -1,0 +1,1894 @@
+openapi: 3.1.0
+info:
+  # Do not change the title, if the title changes, the import paths will be broken
+  title: Api
+  version: 0.1.0
+  description: Club Manager API
+servers:
+  - url: /api
+    description: Base API path
+tags:
+  - name: health
+  - name: auth
+  - name: leads
+  - name: pipeline
+  - name: users
+  - name: coaches
+  - name: admins
+  - name: seances
+  - name: presences
+  - name: events
+  - name: gallery
+  - name: enrollments
+  - name: payments
+  - name: whatsapp
+  - name: storage
+paths:
+  /healthz:
+    get:
+      operationId: healthCheck
+      tags: [health]
+      summary: Health check
+      responses:
+        "200":
+          description: Healthy
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/HealthStatus"
+
+  # Auth
+  /auth/login:
+    post:
+      operationId: login
+      tags: [auth]
+      summary: Login
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/LoginInput"
+      responses:
+        "200":
+          description: Login success
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AuthSession"
+        "401":
+          description: Unauthorized
+  /auth/me:
+    get:
+      operationId: getMe
+      tags: [auth]
+      summary: Get current user
+      responses:
+        "200":
+          description: Current user
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AuthUser"
+        "401":
+          description: Unauthorized
+
+  # Leads (from Google Sheets)
+  /leads:
+    get:
+      operationId: getLeads
+      tags: [leads]
+      summary: Get leads from Google Sheets
+      responses:
+        "200":
+          description: List of leads
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Lead"
+
+  /leads/by-key:
+    delete:
+      operationId: deleteLeadByKey
+      tags: [leads]
+      summary: Delete a Google Sheets lead row that has no pipeline entry yet
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/LeadDeleteInput"
+      responses:
+        "204":
+          description: Deleted
+
+  # Manual Leads
+  /leads/manual:
+    get:
+      operationId: getManualLeads
+      tags: [leads]
+      summary: Get manual leads
+      responses:
+        "200":
+          description: List of manual leads
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/ManualLead"
+    post:
+      operationId: createManualLead
+      tags: [leads]
+      summary: Create a manual lead (walk-in)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ManualLeadInput"
+      responses:
+        "201":
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ManualLead"
+  /leads/manual/{id}:
+    patch:
+      operationId: updateManualLead
+      tags: [leads]
+      summary: Update a manual lead
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ManualLeadUpdate"
+      responses:
+        "200":
+          description: Updated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ManualLead"
+    delete:
+      operationId: deleteManualLead
+      tags: [leads]
+      summary: Delete a manual lead
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "204":
+          description: Deleted
+
+  # Pipeline (Sheets leads)
+  /pipeline:
+    get:
+      operationId: getPipeline
+      tags: [pipeline]
+      summary: Get pipeline entries
+      responses:
+        "200":
+          description: Pipeline entries
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/PipelineEntry"
+    post:
+      operationId: upsertPipeline
+      tags: [pipeline]
+      summary: Upsert pipeline entry
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/PipelineInput"
+      responses:
+        "200":
+          description: Upserted
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PipelineEntry"
+  /pipeline/{id}:
+    patch:
+      operationId: updatePipelineEntry
+      tags: [pipeline]
+      summary: Update pipeline entry step data
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/PipelineUpdate"
+      responses:
+        "200":
+          description: Updated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PipelineEntry"
+    delete:
+      operationId: deletePipelineEntry
+      tags: [pipeline]
+      summary: Delete a pipeline entry
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "204":
+          description: Deleted
+
+  # WhatsApp
+  /pipeline/whatsapp/send:
+    post:
+      operationId: sendWhatsApp
+      tags: [pipeline]
+      summary: Send WhatsApp message to a lead
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/WhatsAppMessageInput"
+      responses:
+        "200":
+          description: Message sent
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/WhatsAppMessageResult"
+  # Trimester Enrollments
+  /enrollments:
+    get:
+      operationId: getEnrollments
+      tags: [enrollments]
+      summary: Get all trimester enrollments
+      parameters:
+        - name: leadKey
+          in: query
+          schema:
+            type: string
+        - name: userUsername
+          in: query
+          schema:
+            type: string
+      responses:
+        "200":
+          description: List of enrollments
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Enrollment"
+    post:
+      operationId: createEnrollment
+      tags: [enrollments]
+      summary: Create a trimester enrollment (Step 4)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/EnrollmentInput"
+      responses:
+        "201":
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Enrollment"
+  /enrollments/{id}:
+    patch:
+      operationId: updateEnrollment
+      tags: [enrollments]
+      summary: Update an enrollment
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/EnrollmentUpdate"
+      responses:
+        "200":
+          description: Updated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Enrollment"
+  /enrollments/reroll-status:
+    get:
+      operationId: getRerollStatus
+      tags: [enrollments]
+      summary: List all users with their enrollment status for a given trimester/year
+      parameters:
+        - name: trimester
+          in: query
+          required: true
+          schema:
+            type: string
+        - name: academicYear
+          in: query
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Reroll status list
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/RerollCandidate"
+  /enrollments/reroll:
+    post:
+      operationId: rerollEnrollments
+      tags: [enrollments]
+      summary: Bulk re-enroll selected users for a trimester/year
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/RerollInput"
+      responses:
+        "200":
+          description: Reroll result
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/RerollResult"
+  /enrollments/{id}/send-receipt:
+    post:
+      operationId: sendEnrollmentReceipt
+      tags: [enrollments]
+      summary: Generate PDF receipt and send via WhatsApp
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Receipt sent
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ReceiptResult"
+
+  # Global Payments Dashboard
+  /payments/summary:
+    get:
+      operationId: getPaymentsSummary
+      tags: [payments]
+      summary: Get global payments summary
+      responses:
+        "200":
+          description: Payments summary
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PaymentsSummary"
+  /payments/users:
+    get:
+      operationId: getUserBillings
+      tags: [payments]
+      summary: Get billing info for all users
+      responses:
+        "200":
+          description: User billing list
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/UserBilling"
+  /payments/users/{username}/add-payment:
+    post:
+      operationId: addUserPayment
+      tags: [payments]
+      summary: Record an additional payment for a user, applied to their latest enrollment
+      parameters:
+        - name: username
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AddPaymentInput"
+      responses:
+        "200":
+          description: Updated billing info
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/UserBilling"
+
+  # Club settings
+  /settings/trimester:
+    get:
+      operationId: getCurrentTrimester
+      tags: [settings]
+      summary: Get the currently active trimester/academic year
+      responses:
+        "200":
+          description: Current trimester settings
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ClubSettings"
+    put:
+      operationId: updateCurrentTrimester
+      tags: [settings]
+      summary: Set the currently active trimester/academic year
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ClubSettingsInput"
+      responses:
+        "200":
+          description: Updated settings
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ClubSettings"
+
+  # Users
+  /users:
+    get:
+      operationId: getUsers
+      tags: [users]
+      summary: Get all users
+      responses:
+        "200":
+          description: List of users
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/User"
+    post:
+      operationId: createUser
+      tags: [users]
+      summary: Create a user
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UserInput"
+      responses:
+        "201":
+          description: Created
+  /users/{username}:
+    delete:
+      operationId: deleteUser
+      tags: [users]
+      summary: Permanently delete a user and their enrollment history
+      parameters:
+        - name: username
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Deleted
+  /users/{username}/password:
+    patch:
+      operationId: updateUserPassword
+      tags: [users]
+      summary: Change user password
+      parameters:
+        - name: username
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/PasswordUpdate"
+      responses:
+        "200":
+          description: Updated
+
+  # Coaches
+  /coaches:
+    get:
+      operationId: getCoaches
+      tags: [coaches]
+      summary: Get all coaches
+      responses:
+        "200":
+          description: List of coaches
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Coach"
+    post:
+      operationId: createCoach
+      tags: [coaches]
+      summary: Create a coach
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CoachInput"
+      responses:
+        "201":
+          description: Created
+
+  # Admins
+  /admins:
+    get:
+      operationId: getAdmins
+      tags: [admins]
+      summary: Get all admins
+      responses:
+        "200":
+          description: List of admins
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Admin"
+    post:
+      operationId: createAdmin
+      tags: [admins]
+      summary: Create an admin
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AdminInput"
+      responses:
+        "201":
+          description: Created
+
+  # Seances
+  /seances:
+    get:
+      operationId: getSeances
+      tags: [seances]
+      summary: Get seances
+      parameters:
+        - name: coach
+          in: query
+          schema:
+            type: string
+        - name: categorie
+          in: query
+          schema:
+            type: string
+        - name: status
+          in: query
+          schema:
+            type: string
+      responses:
+        "200":
+          description: List of seances
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Seance"
+    post:
+      operationId: createSeance
+      tags: [seances]
+      summary: Create a seance
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/SeanceInput"
+      responses:
+        "201":
+          description: Created
+  /seances/{id}:
+    patch:
+      operationId: updateSeance
+      tags: [seances]
+      summary: Admin edits a seance's schedule, category, group, or assigned coach
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/SeanceUpdate"
+      responses:
+        "200":
+          description: Updated
+  /seances/{id}/details:
+    patch:
+      operationId: fillSeanceDetails
+      tags: [seances]
+      summary: Coach (owner) or admin fills in the activity details of a seance, confirming it
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/SeanceDetailsInput"
+      responses:
+        "200":
+          description: Updated
+  /seances/generate-recurring:
+    post:
+      operationId: generateRecurringSeances
+      tags: [seances]
+      summary: Admin generates the fixed weekly recurring slots for the next N weeks
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/GenerateRecurringInput"
+      responses:
+        "200":
+          description: Generated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GenerateRecurringResult"
+  /seances/{id}/status:
+    patch:
+      operationId: updateSeanceStatus
+      tags: [seances]
+      summary: Update seance status
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/SeanceStatusUpdate"
+      responses:
+        "200":
+          description: Updated
+
+  # Groups
+  /groups:
+    get:
+      operationId: getGroups
+      tags: [groups]
+      summary: Get all groups, optionally filtered by category
+      parameters:
+        - name: categorie
+          in: query
+          schema:
+            type: string
+      responses:
+        "200":
+          description: List of groups
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Group"
+    post:
+      operationId: createGroup
+      tags: [groups]
+      summary: Create a group within a category
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/GroupInput"
+      responses:
+        "201":
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Group"
+  /groups/{id}:
+    delete:
+      operationId: deleteGroup
+      tags: [groups]
+      summary: Delete a group (members become ungrouped)
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Deleted
+
+  # Presences
+  /presences:
+    get:
+      operationId: getPresences
+      tags: [presences]
+      summary: Get presences
+      parameters:
+        - name: username
+          in: query
+          schema:
+            type: string
+      responses:
+        "200":
+          description: List of presences
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Presence"
+    post:
+      operationId: createPresence
+      tags: [presences]
+      summary: Record a presence
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/PresenceInput"
+      responses:
+        "201":
+          description: Created
+
+  # Events
+  /events:
+    get:
+      operationId: getEvents
+      tags: [events]
+      summary: Get events
+      responses:
+        "200":
+          description: List of events
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Event"
+    post:
+      operationId: createEvent
+      tags: [events]
+      summary: Create an event
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/EventInput"
+      responses:
+        "201":
+          description: Created
+
+  # WhatsApp connection management (admin-only)
+  /whatsapp/status:
+    get:
+      operationId: getWhatsAppStatus
+      tags: [whatsapp]
+      summary: Get current WhatsApp connection status and pending QR code
+      responses:
+        "200":
+          description: Connection status
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/WhatsAppStatus"
+  /whatsapp/reset:
+    post:
+      operationId: resetWhatsApp
+      tags: [whatsapp]
+      summary: Log out and reset the WhatsApp session (requires re-scanning the QR code)
+      responses:
+        "200":
+          description: Reset triggered
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/WhatsAppResetResult"
+
+  # Object storage
+  /storage/uploads/request-url:
+    post:
+      operationId: requestUploadUrl
+      tags: [storage]
+      summary: Request a presigned URL for file upload
+      description: |
+        Returns a presigned GCS URL for direct upload. The client sends JSON
+        metadata here, then uploads the file directly to the returned URL.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UploadUrlRequest"
+      responses:
+        "200":
+          description: Presigned upload URL generated.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/UploadUrlResponse"
+        "400":
+          description: Missing or invalid required fields.
+        "500":
+          description: Failed to generate upload URL.
+
+  # Gallery
+  /gallery:
+    get:
+      operationId: getGallery
+      tags: [gallery]
+      summary: Get gallery items
+      responses:
+        "200":
+          description: Gallery items
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/GalleryItem"
+    post:
+      operationId: createGalleryItem
+      tags: [gallery]
+      summary: Upload a gallery item
+      responses:
+        "201":
+          description: Created
+
+components:
+  schemas:
+    HealthStatus:
+      type: object
+      properties:
+        status:
+          type: string
+      required: [status]
+
+    LoginInput:
+      type: object
+      required: [username, password]
+      properties:
+        username:
+          type: string
+        password:
+          type: string
+
+    AuthUser:
+      type: object
+      required: [username, role, nom]
+      properties:
+        username:
+          type: string
+        role:
+          type: string
+        nom:
+          type: string
+        categorie:
+          type: string
+        paymentStatus:
+          type: string
+        enrolled:
+          type: boolean
+          description: >-
+            For role "User" only: whether they have an active enrollment for
+            the currently active trimester. Always true for Admin/Coach.
+        currentTrimesterLabel:
+          type: string
+          description: >-
+            Human-readable "T1 2025-2026" label of the trimester the
+            enrolled flag was evaluated against, for display in the
+            not-enrolled banner. Empty if no trimester is currently active.
+
+    AuthSession:
+      type: object
+      required: [token, user]
+      properties:
+        token:
+          type: string
+        user:
+          $ref: "#/components/schemas/AuthUser"
+
+    Lead:
+      type: object
+      required: [_rowIndex, nom, prenom]
+      properties:
+        _rowIndex:
+          type: string
+        nom:
+          type: string
+        prenom:
+          type: string
+        dateNaissance:
+          type: string
+        nomParent:
+          type: string
+        numeroParent:
+          type: string
+        emailParent:
+          type: string
+        ecole:
+          type: string
+        niveau:
+          type: string
+        troubleApprentissage:
+          type: string
+        allergie:
+          type: string
+        allergieDetail:
+          type: string
+        parcours:
+          type: string
+        confirme:
+          type: boolean
+
+    LeadDeleteInput:
+      type: object
+      required: [rowKey]
+      properties:
+        rowKey:
+          type: string
+
+    ManualLead:
+      type: object
+      required: [id, nom, prenom, source, currentStep]
+      properties:
+        id:
+          type: string
+        nom:
+          type: string
+        prenom:
+          type: string
+        dateNaissance:
+          type: string
+        nomParent:
+          type: string
+        numeroParent:
+          type: string
+        emailParent:
+          type: string
+        ecole:
+          type: string
+        niveau:
+          type: string
+        troubleApprentissage:
+          type: string
+        allergie:
+          type: string
+        allergieDetail:
+          type: string
+        parcours:
+          type: string
+        paymentType:
+          type: string
+        currentStep:
+          type: integer
+        confirmed:
+          type: boolean
+        source:
+          type: string
+        afSubmitted:
+          type: boolean
+        imageAuthorization:
+          type: boolean
+        identityVerified:
+          type: boolean
+        medicalNotes:
+          type: string
+        termsSigned:
+          type: boolean
+        feeStatus:
+          type: string
+        reglementSigned:
+          type: boolean
+        feeDate:
+          type: ["string", "null"]
+
+    ManualLeadInput:
+      type: object
+      required: [nom, prenom, paymentType]
+      properties:
+        nom:
+          type: string
+        prenom:
+          type: string
+        dateNaissance:
+          type: string
+        nomParent:
+          type: string
+        numeroParent:
+          type: string
+        emailParent:
+          type: string
+        ecole:
+          type: string
+        niveau:
+          type: string
+        troubleApprentissage:
+          type: string
+        allergie:
+          type: string
+        allergieDetail:
+          type: string
+        parcours:
+          type: string
+        paymentType:
+          type: string
+
+    ManualLeadUpdate:
+      type: object
+      properties:
+        paymentType:
+          type: string
+        currentStep:
+          type: integer
+        confirmed:
+          type: boolean
+        afSubmitted:
+          type: boolean
+        imageAuthorization:
+          type: boolean
+        identityVerified:
+          type: boolean
+        medicalNotes:
+          type: string
+        termsSigned:
+          type: boolean
+        feeStatus:
+          type: string
+        reglementSigned:
+          type: boolean
+        feeDate:
+          type: ["string", "null"]
+
+    PipelineEntry:
+      type: object
+      required: [id, leadKey, currentStep]
+      properties:
+        id:
+          type: string
+        leadKey:
+          type: string
+        leadSource:
+          type: string
+        paymentType:
+          type: string
+        currentStep:
+          type: integer
+        confirmed:
+          type: boolean
+        whatsappStatus:
+          type: string
+        whatsappSentAt:
+          type: ["string", "null"]
+        repliedAt:
+          type: ["string", "null"]
+        rendezvousDate:
+          type: ["string", "null"]
+        rendezvousNotes:
+          type: string
+        afSubmitted:
+          type: boolean
+        imageAuthorization:
+          type: boolean
+        identityVerified:
+          type: boolean
+        medicalNotes:
+          type: string
+        termsSigned:
+          type: boolean
+        feeStatus:
+          type: string
+        reglementSigned:
+          type: boolean
+        feeDate:
+          type: ["string", "null"]
+
+    PipelineInput:
+      type: object
+      required: [leadKey, paymentType, currentStep]
+      properties:
+        leadKey:
+          type: string
+        paymentType:
+          type: string
+        currentStep:
+          type: integer
+        confirmed:
+          type: boolean
+
+    PipelineUpdate:
+      type: object
+      properties:
+        paymentType:
+          type: string
+        currentStep:
+          type: integer
+        confirmed:
+          type: boolean
+        rendezvousDate:
+          type: ["string", "null"]
+        rendezvousNotes:
+          type: string
+        afSubmitted:
+          type: boolean
+        imageAuthorization:
+          type: boolean
+        identityVerified:
+          type: boolean
+        medicalNotes:
+          type: string
+        termsSigned:
+          type: boolean
+        feeStatus:
+          type: string
+        reglementSigned:
+          type: boolean
+        feeDate:
+          type: ["string", "null"]
+
+    WhatsAppMessageInput:
+      type: object
+      required: [leadKey, leadSource, phoneNumber, message]
+      properties:
+        leadKey:
+          type: string
+        leadSource:
+          type: string
+        phoneNumber:
+          type: string
+        message:
+          type: string
+
+    WhatsAppMessageResult:
+      type: object
+      required: [success]
+      properties:
+        success:
+          type: boolean
+        messageId:
+          type: string
+        error:
+          type: string
+
+    Enrollment:
+      type: object
+      required: [id, leadKey, leadSource]
+      properties:
+        id:
+          type: string
+        leadKey:
+          type: string
+        leadSource:
+          type: string
+        userUsername:
+          type: ["string", "null"]
+        program:
+          type: string
+        categorie:
+          type: string
+        paymentMethod:
+          type: string
+        groupName:
+          type: string
+        parcours:
+          type: string
+        horaire:
+          type: string
+        paymentStatus:
+          type: string
+        facilitator:
+          type: string
+        amountExpected:
+          type: number
+        amountReceived:
+          type: number
+        amountRemaining:
+          type: number
+        amountPerPeriod:
+          type: ["number", "null"]
+        billingStartDate:
+          type: ["string", "null"]
+        programStartDate:
+          type: ["string", "null"]
+        programEndDate:
+          type: ["string", "null"]
+        depositDueDate:
+          type: ["string", "null"]
+        suspensionStatus:
+          type: string
+        invoiceNumber:
+          type: string
+        trimester:
+          type: string
+        academicYear:
+          type: string
+        receiptSentAt:
+          type: ["string", "null"]
+        createdAt:
+          type: string
+
+    EnrollmentInput:
+      type: object
+      required: [leadKey, leadSource]
+      properties:
+        leadKey:
+          type: string
+        leadSource:
+          type: string
+        userUsername:
+          type: string
+        program:
+          type: string
+        categorie:
+          type: string
+        paymentMethod:
+          type: string
+        groupName:
+          type: string
+        parcours:
+          type: string
+        horaire:
+          type: string
+        facilitator:
+          type: string
+        amountExpected:
+          type: number
+        amountReceived:
+          type: number
+        amountPerPeriod:
+          type: number
+        billingStartDate:
+          type: string
+        programStartDate:
+          type: string
+        programEndDate:
+          type: string
+        depositDueDate:
+          type: string
+        suspensionStatus:
+          type: string
+        invoiceNumber:
+          type: string
+        trimester:
+          type: string
+        academicYear:
+          type: string
+
+    EnrollmentUpdate:
+      type: object
+      properties:
+        userUsername:
+          type: string
+        program:
+          type: string
+        paymentMethod:
+          type: string
+        groupName:
+          type: string
+        parcours:
+          type: string
+        horaire:
+          type: string
+        facilitator:
+          type: string
+        amountExpected:
+          type: number
+        amountReceived:
+          type: number
+        amountPerPeriod:
+          type: ["number", "null"]
+        billingStartDate:
+          type: string
+        programStartDate:
+          type: string
+        programEndDate:
+          type: string
+        depositDueDate:
+          type: string
+        suspensionStatus:
+          type: string
+        invoiceNumber:
+          type: string
+        trimester:
+          type: string
+        academicYear:
+          type: string
+
+    ReceiptResult:
+      type: object
+      required: [success]
+      properties:
+        success:
+          type: boolean
+        error:
+          type: string
+
+    PaymentsSummary:
+      type: object
+      required: [totalExpected, totalPaid, totalRemaining, activeUsers, overdueCount]
+      properties:
+        totalExpected:
+          type: number
+        totalPaid:
+          type: number
+        totalRemaining:
+          type: number
+        activeUsers:
+          type: integer
+        overdueCount:
+          type: integer
+
+    UserBilling:
+      type: object
+      required: [username, nom, prenom]
+      properties:
+        username:
+          type: string
+        nom:
+          type: string
+        prenom:
+          type: string
+        totalExpected:
+          type: number
+        totalPaid:
+          type: number
+        totalRemaining:
+          type: number
+        enrollmentCount:
+          type: integer
+        paymentStatus:
+          type: string
+        latestTrimester:
+          type: string
+        latestEnrollmentId:
+          type: string
+          nullable: true
+
+    RerollCandidate:
+      type: object
+      required: [username, nom, prenom, enrolled]
+      properties:
+        username:
+          type: string
+        nom:
+          type: string
+        prenom:
+          type: string
+        categorie:
+          type: string
+        groupName:
+          type: string
+        parcours:
+          type: string
+        horaire:
+          type: string
+        enrolled:
+          type: boolean
+        enrollmentId:
+          type: string
+          nullable: true
+        program:
+          type: string
+        paymentMethod:
+          type: string
+        amountPerPeriod:
+          type: ["number", "null"]
+
+    RerollEntryInput:
+      type: object
+      required: [username]
+      properties:
+        username:
+          type: string
+        program:
+          type: string
+        paymentMethod:
+          type: string
+        amountPerPeriod:
+          type: number
+        groupName:
+          type: string
+        parcours:
+          type: string
+        horaire:
+          type: string
+
+    RerollInput:
+      type: object
+      required: [trimester, academicYear, entries]
+      properties:
+        trimester:
+          type: string
+        academicYear:
+          type: string
+        entries:
+          type: array
+          items:
+            $ref: "#/components/schemas/RerollEntryInput"
+
+    RerollResult:
+      type: object
+      required: [success, enrolled]
+      properties:
+        success:
+          type: boolean
+        enrolled:
+          type: integer
+        enrollments:
+          type: array
+          items:
+            $ref: "#/components/schemas/Enrollment"
+
+    ClubSettings:
+      type: object
+      required: [currentTrimester, currentAcademicYear]
+      properties:
+        currentTrimester:
+          type: string
+        currentAcademicYear:
+          type: string
+        updatedAt:
+          type: string
+
+    ClubSettingsInput:
+      type: object
+      required: [currentTrimester, currentAcademicYear]
+      properties:
+        currentTrimester:
+          type: string
+        currentAcademicYear:
+          type: string
+
+    AddPaymentInput:
+      type: object
+      required: [amount]
+      properties:
+        amount:
+          type: number
+          description: Additional amount received, added to the latest enrollment's amount received
+
+    User:
+      type: object
+      required: [username, nom, prenom]
+      properties:
+        username:
+          type: string
+        nom:
+          type: string
+        prenom:
+          type: string
+        dateNaissance:
+          type: string
+        nomParent:
+          type: string
+        numeroParent:
+          type: string
+        categorie:
+          type: string
+        group:
+          type: string
+        paymentStatus:
+          type: string
+        paymentType:
+          type: string
+        remarque:
+          type: string
+        enrolled:
+          type: boolean
+          description: >-
+            Whether this user has an active enrollment for the currently
+            active trimester (per `club_settings`). False if no active
+            trimester is configured or the user has no matching enrollment.
+
+    UserInput:
+      type: object
+      required: [username, password, nom, prenom]
+      properties:
+        username:
+          type: string
+        password:
+          type: string
+        nom:
+          type: string
+        prenom:
+          type: string
+        dateNaissance:
+          type: string
+        nomParent:
+          type: string
+        numeroParent:
+          type: string
+        categorie:
+          type: string
+        group:
+          type: string
+        paymentStatus:
+          type: string
+        paymentType:
+          type: string
+        remarque:
+          type: string
+
+    PasswordUpdate:
+      type: object
+      required: [oldPassword, newPassword]
+      properties:
+        oldPassword:
+          type: string
+        newPassword:
+          type: string
+
+    Coach:
+      type: object
+      required: [username, nom]
+      properties:
+        username:
+          type: string
+        nom:
+          type: string
+
+    CoachInput:
+      type: object
+      required: [username, nom, password]
+      properties:
+        username:
+          type: string
+        nom:
+          type: string
+        password:
+          type: string
+
+    Admin:
+      type: object
+      required: [username]
+      properties:
+        username:
+          type: string
+
+    AdminInput:
+      type: object
+      required: [username, password]
+      properties:
+        username:
+          type: string
+        password:
+          type: string
+
+    Seance:
+      type: object
+      required: [id, coachUsername, date, categorie, activityType]
+      properties:
+        id:
+          type: string
+        coachUsername:
+          type: string
+        date:
+          type: string
+        categorie:
+          type: string
+        groupName:
+          type: string
+          description: Optional group within the category this seance targets. Empty means the whole category.
+        activityType:
+          type: string
+        studentCount:
+          type: string
+        objective:
+          type: string
+        materials:
+          type: string
+        status:
+          type: string
+        prepTasks:
+          type: string
+
+    SeanceInput:
+      type: object
+      required: [date, categorie]
+      properties:
+        coachUsername:
+          type: string
+        date:
+          type: string
+        categorie:
+          type: string
+        groupName:
+          type: string
+        activityType:
+          type: string
+        studentCount:
+          type: string
+        objective:
+          type: string
+        materials:
+          type: string
+        prepTasks:
+          type: string
+
+    Group:
+      type: object
+      required: [id, categorie, name]
+      properties:
+        id:
+          type: string
+        categorie:
+          type: string
+        name:
+          type: string
+        memberCount:
+          type: integer
+        createdAt:
+          type: string
+
+    GroupInput:
+      type: object
+      required: [categorie, name]
+      properties:
+        categorie:
+          type: string
+        name:
+          type: string
+
+    SeanceStatusUpdate:
+      type: object
+      required: [status]
+      properties:
+        status:
+          type: string
+
+    SeanceUpdate:
+      type: object
+      properties:
+        date:
+          type: string
+        categorie:
+          type: string
+        groupName:
+          type: string
+        coachUsername:
+          type: string
+
+    SeanceDetailsInput:
+      type: object
+      required: [activityType]
+      properties:
+        activityType:
+          type: string
+        studentCount:
+          type: string
+        objective:
+          type: string
+        materials:
+          type: string
+        prepTasks:
+          type: string
+
+    GenerateRecurringInput:
+      type: object
+      properties:
+        weeksAhead:
+          type: integer
+        slots:
+          type: array
+          description: >-
+            Optional custom weekly template. Each entry is one recurring slot
+            (day of week + time). If omitted, the server falls back to its
+            default fixed schedule. day uses JS Date.getDay() (0=Sunday..6=Saturday).
+          items:
+            $ref: "#/components/schemas/RecurringSlotInput"
+
+    RecurringSlotInput:
+      type: object
+      required: [day, time, categorie]
+      properties:
+        day:
+          type: integer
+          minimum: 0
+          maximum: 6
+        time:
+          type: string
+          description: "HH:mm 24h time"
+        categorie:
+          type: string
+          description: "Target category for this slot (e.g. Junior, Cadets, Mini Maker, Senior)"
+        groupName:
+          type: string
+          description: "Optional group name within the category. Empty string means whole category."
+
+    GenerateRecurringResult:
+      type: object
+      required: [success, created]
+      properties:
+        success:
+          type: boolean
+        created:
+          type: integer
+
+    Presence:
+      type: object
+      required: [id, date, seanceId, categorie, studentUsername, status]
+      properties:
+        id:
+          type: string
+        date:
+          type: string
+        seanceId:
+          type: string
+        categorie:
+          type: string
+        studentUsername:
+          type: string
+        status:
+          type: string
+
+    PresenceInput:
+      type: object
+      required: [date, seanceId, categorie, studentUsername, status]
+      properties:
+        date:
+          type: string
+        seanceId:
+          type: string
+        categorie:
+          type: string
+        studentUsername:
+          type: string
+        status:
+          type: string
+
+    Event:
+      type: object
+      required: [id, title, date]
+      properties:
+        id:
+          type: string
+        title:
+          type: string
+        description:
+          type: string
+        date:
+          type: string
+        location:
+          type: string
+        imageUrl:
+          type: string
+
+    EventInput:
+      type: object
+      required: [title, date]
+      properties:
+        title:
+          type: string
+        description:
+          type: string
+        date:
+          type: string
+        location:
+          type: string
+
+    GalleryItem:
+      type: object
+      required: [id, url]
+      properties:
+        id:
+          type: string
+        url:
+          type: string
+        caption:
+          type: string
+        uploadedAt:
+          type: string
+
+    WhatsAppStatus:
+      type: object
+      required: [connected]
+      properties:
+        connected:
+          type: boolean
+        qr:
+          type: ["string", "null"]
+          description: Pending QR code data string to render on the frontend. Null when connected or not yet generated.
+
+    WhatsAppResetResult:
+      type: object
+      required: [success]
+      properties:
+        success:
+          type: boolean
+        error:
+          type: string
+
+    UploadUrlRequest:
+      type: object
+      required: [name, size, contentType]
+      properties:
+        name:
+          type: string
+          minLength: 1
+        size:
+          type: integer
+          minimum: 1
+        contentType:
+          type: string
+          minLength: 1
+
+    UploadUrlResponse:
+      type: object
+      required: [uploadURL, objectPath]
+      properties:
+        uploadURL:
+          type: string
+        objectPath:
+          type: string
+        metadata:
+          $ref: "#/components/schemas/UploadUrlRequest"
