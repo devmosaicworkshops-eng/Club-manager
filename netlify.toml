@@ -14,7 +14,7 @@
 # This keeps setBaseUrl('') working — the browser never sees cross-origin.
 [[redirects]]
   from   = "/api/*"
-  to     = "https://club-manager-581t.onrender.com/api/:splat"
+  to     = "https://students-manager-d9kx.onrender.com/api/:splat"
   status = 200
   force  = true
 
